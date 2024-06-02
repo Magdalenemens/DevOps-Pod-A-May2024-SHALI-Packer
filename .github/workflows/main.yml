@@ -1,0 +1,62 @@
+name: Config_Prompt
+
+on:
+  pull_request:
+    branches:
+      - 'PRE-PROD'
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Build steps
+      - name: Build
+        run: echo "Building the project"
+
+      - name: Shell_Script
+        run: echo "Running shell command"
+        shell: bash
+
+
+  create_pull_request:
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install GitHub CLI
+        run: |
+          sudo apt update
+          sudo apt install -y curl
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh -y
+
+      - name: Authenticate GitHub CLI
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          echo $TOKEN | gh auth login --with-token
+
+
+      - name: Create Pull Request
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          git config --global user.email "KebsOps@gmail.com"
+          git config --global user.name "KebOps"
+          git checkout -b build-success
+          git commit --allow-empty -m "Automated build success commit"
+          git push https://${{ secrets.TOKEN }}@github.com/xterns/DevOps-Pod-C-May2024-SHALI-Packer.git build-success
+          gh pr create --title "Automated Build Success" --body "This pull request is automatically created after a successful build." --head build-success --base main
